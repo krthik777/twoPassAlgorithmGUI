@@ -1,50 +1,33 @@
-# Welcome to your Expo app 👋
+# Two Pass Algorithm Implementation 👋
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+This is a React Native project developed using [Expo](https://expo.dev) to demonstrate the implementation of **Pass 1** and **Pass 2** algorithms. The project features two screens where each pass is calculated and displayed on different tabs.
 
-## Get started
+## What is the Two Pass Algorithm?
 
-1. Install dependencies
+The **Two Pass Algorithm** is commonly used in assemblers and compilers to process source code in two stages:
+
+1. **Pass 1**:
+   - It scans the source code and gathers essential information (like symbols and their addresses).
+   - Generates a symbol table and sets up the memory locations.
+   - It doesn't generate the final output but prepares the necessary data for **Pass 2**.
+   
+2. **Pass 2**:
+   - It uses the information gathered in **Pass 1** to generate the final object code.
+   - It resolves references and ensures the correct machine code or assembly instructions are generated.
+
+This project focuses on simulating this two-pass processing logic through a simple user interface built with React Native.
+
+## Get Started
+
+To get started with this project, follow these steps:
+
+1. Install the dependencies:
 
    ```bash
    npm install
-   ```
 
-2. Start the app
+2.Start the app:
 
    ```bash
-    npx expo start
-   ```
+   npx expo start
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
