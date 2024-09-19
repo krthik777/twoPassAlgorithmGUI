@@ -1,37 +1,28 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import 'react-native-reanimated';
+import React, { useState } from 'react';
+import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useColorScheme } from 'react-native';
+import Pass1Screen from './screens/Pass1Screen';
+import Pass2Screen from './screens/Pass2Screen';
+import SplashScreen from './splashscreen';
 
-import { useColorScheme } from '@/hooks/useColorScheme';
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
+const Tab = createBottomTabNavigator();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
-
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
-
-  if (!loaded) {
-    return null;
-  }
+  const [loaded, setLoaded] = useState(false);
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-    </ThemeProvider>
+    <>
+      {!loaded && <SplashScreen onLoaded={() => setLoaded(true)} />}
+      {loaded && (
+        <NavigationContainer independent={true} theme={colorScheme === 'light' ? DarkTheme : DefaultTheme}>
+          <Tab.Navigator>
+            <Tab.Screen name="Pass 1" component={Pass1Screen} />
+            <Tab.Screen name="Pass 2" component={Pass2Screen} />
+          </Tab.Navigator>
+        </NavigationContainer>
+      )}
+    </>
   );
 }
