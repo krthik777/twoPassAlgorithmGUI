@@ -13,5 +13,5 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
-  ]
+, "app/utils/fileUtils.js", "app/screens/Pass1Screen.jsx", "app/screens/Pass2Screen.jsx"  ]
 }
