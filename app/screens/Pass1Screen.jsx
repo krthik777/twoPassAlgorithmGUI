@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, Text, ScrollView, StyleSheet, Platform } from 'react-native';
+import { View, TextInput, TouchableOpacity, Text, ScrollView, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as DocumentPicker from 'expo-document-picker';
 import { runPass1 } from '../utils/pass1';
@@ -9,6 +9,8 @@ export default function Pass1Screen() {
     const [optab, setOptab] = useState('');
     const [intermediateFile, setIntermediateFile] = useState([]);
     const [symtab, setSymtab] = useState([]);
+
+    const { width } = useWindowDimensions();
 
     const handleFileUpload = async (setField) => {
         if (Platform.OS === 'ios') { // Only allow file upload for iOS
@@ -62,41 +64,46 @@ export default function Pass1Screen() {
         }
     };
 
+    // Check if screen width is large enough to display the inputs side by side on web
+    const isWideScreen = Platform.OS === 'web' && width >= 768;
+
     return (
         <ScrollView style={styles.container}>
-            <TextInput
-                multiline
-                numberOfLines={10}
-                placeholder="Assembly Code"
-                value={assemblyCode}
-                onChangeText={setAssemblyCode}
-                style={styles.textInput}
-                placeholderTextColor={colors.paleSilver}
-            />
+            <View style={[styles.inputContainer, isWideScreen && styles.inputContainerRow]}>
+                <View style={styles.inputFieldWrapper}>
+                    <TextInput
+                        multiline
+                        numberOfLines={10}
+                        placeholder="Assembly Code"
+                        value={assemblyCode}
+                        onChangeText={setAssemblyCode}
+                        style={styles.textInput}
+                        placeholderTextColor={colors.paleSilver}
+                    />
+                    {Platform.OS !== 'android' && (
+                        <TouchableOpacity onPress={() => handleFileUpload(setAssemblyCode)} style={styles.button}>
+                            <Text style={styles.buttonText}>Upload Assembly Code</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
 
-            {/* Conditionally render the upload button for assembly code */}
-            {Platform.OS !== 'android' && (
-                <TouchableOpacity onPress={() => handleFileUpload(setAssemblyCode)} style={styles.button}>
-                    <Text style={styles.buttonText}>Upload Assembly Code</Text>
-                </TouchableOpacity>
-            )}
-
-            <TextInput
-                multiline
-                numberOfLines={10}
-                placeholder="Optab"
-                value={optab}
-                onChangeText={setOptab}
-                style={styles.textInput}
-                placeholderTextColor={colors.paleSilver}
-            />
-
-            {/* Conditionally render the upload button for optab */}
-            {Platform.OS !== 'android' && (
-                <TouchableOpacity onPress={() => handleFileUpload(setOptab)} style={styles.button}>
-                    <Text style={styles.buttonText}>Upload Optab</Text>
-                </TouchableOpacity>
-            )}
+                <View style={styles.inputFieldWrapper}>
+                    <TextInput
+                        multiline
+                        numberOfLines={10}
+                        placeholder="Optab"
+                        value={optab}
+                        onChangeText={setOptab}
+                        style={styles.textInput}
+                        placeholderTextColor={colors.paleSilver}
+                    />
+                    {Platform.OS !== 'android' && (
+                        <TouchableOpacity onPress={() => handleFileUpload(setOptab)} style={styles.button}>
+                            <Text style={styles.buttonText}>Upload Optab</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+            </View>
 
             <TouchableOpacity onPress={handlePass1} style={styles.button}>
                 <Text style={styles.buttonText}>Run Pass 1</Text>
@@ -157,13 +164,27 @@ const styles = StyleSheet.create({
         backgroundColor: colors.midnightBlue, // Main background color
         padding: 20,
     },
+    inputContainer: {
+        flexDirection: 'column', // Default direction for mobile and smaller screens
+        marginBottom: 20,
+    },
+    inputContainerRow: {
+        flexDirection: 'row', // Side-by-side layout for larger screens on web
+        justifyContent: 'space-between',
+    },
+    inputFieldWrapper: {
+        flex: 1,
+        marginBottom: 10,
+        paddingHorizontal: 5, // Padding between input fields when side by side
+    },
     textInput: {
         borderColor: colors.paleSilver,
         borderWidth: 1,
-        marginBottom: 10,
         padding: 10,
         color: colors.mintCream,  // Text color
         backgroundColor: colors.amethyst, // Light background for inputs
+        borderRadius: 10,
+
     },
     sectionTitle: {
         fontWeight: 'bold',
@@ -200,6 +221,7 @@ const styles = StyleSheet.create({
         shadowRadius: 3.84,    // iOS shadow radius
         alignItems: 'center',  // Center the text inside the button
         marginBottom: 15,      // Add spacing between buttons
+        marginTop: 20,
     },
     buttonText: {
         color: colors.mintCream,

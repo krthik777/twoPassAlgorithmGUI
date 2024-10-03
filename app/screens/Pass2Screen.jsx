@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, Text, FlatList, Alert, Platform, StyleSheet } from 'react-native';
+import { View, TextInput, TouchableOpacity, Text, FlatList, Alert, Platform, StyleSheet, useWindowDimensions } from 'react-native';
 import { runPass2 } from '../utils/pass2'; // Import the runPass2 function from pass2/utils/pass2.js
 
 export default function Pass2Screen() {
@@ -7,6 +7,8 @@ export default function Pass2Screen() {
     const [optab, setOptab] = useState('');
     const [finalOutput, setFinalOutput] = useState([]);
     const [recordFile, setRecordFile] = useState([]);
+
+    const { width } = useWindowDimensions(); // Get screen width
 
     const handleFileUploadWeb = (event, setField) => {
         const file = event.target.files[0];
@@ -56,99 +58,68 @@ export default function Pass2Screen() {
         </View>
     );
 
-    // Combine all components into a single list for rendering
-    const renderItem = ({ item }) => {
-        if (item.type === 'input') {
-            return (
-                <TextInput
-                    placeholder={item.placeholder}
-                    value={item.value}
-                    onChangeText={item.onChangeText}
-                    style={styles.textInput}
-                    multiline
-                />
-            );
-        }
-        if (item.type === 'button') {
-            return (
-                <TouchableOpacity onPress={item.onPress} style={styles.button}>
-                    <Text style={styles.buttonText}>{item.label}</Text>
-                </TouchableOpacity>
-            );
-        }
-        if (item.type === 'tableHeader') {
-            return <Text style={styles.tableHeader}>{item.label}</Text>;
-        }
-        if (item.type === 'flatList') {
-            return (
-                <FlatList
-                    data={item.data}
-                    renderItem={item.renderItem}
-                    keyExtractor={(item) => item.id}
-                    style={styles.table}
-                />
-            );
-        }
-        return null;
-    };
-
-    const data = [
-        {
-            type: 'input',
-            placeholder: 'Enter Assembly Code',
-            value: assemblyCode,
-            onChangeText: setAssemblyCode,
-        },
-        // Conditionally render upload button for assembly code on web only
-        ...(Platform.OS === 'web' ? [{
-            type: 'button',
-            label: 'Upload Assembly Code',
-            onPress: () => handleUpload(setAssemblyCode),
-        }] : []),
-        {
-            type: 'input',
-            placeholder: 'Enter Opcode Table (Optab)',
-            value: optab,
-            onChangeText: setOptab,
-        },
-        // Conditionally render upload button for optab on web only
-        ...(Platform.OS === 'web' ? [{
-            type: 'button',
-            label: 'Upload Optab',
-            onPress: () => handleUpload(setOptab),
-        }] : []),
-        {
-            type: 'button',
-            label: 'Run Pass 2',
-            onPress: handlePass2,
-        },
-        {
-            type: 'tableHeader',
-            label: 'Final Output',
-        },
-        {
-            type: 'flatList',
-            data: finalOutput,
-            renderItem: renderTableRow,
-        },
-        {
-            type: 'tableHeader',
-            label: 'Record File',
-        },
-        {
-            type: 'flatList',
-            data: recordFile,
-            renderItem: ({ item }) => <Text style={styles.recordFileRow}>{item.content}</Text>,
-        },
-    ];
-
     return (
-        <FlatList
-            data={data}
-            renderItem={renderItem}
-            keyExtractor={(item, index) => index.toString()}
-            contentContainerStyle={styles.container}
-        />
+        <View style={styles.container}>
+            {/* Conditionally adjust the layout for web and wide screens */}
+            <View style={[styles.inputContainer, Platform.OS === 'web' && width > 768 ? styles.row : styles.column]}>
+                {/* Assembly Code input and button */}
+                <View style={styles.inputGroup}>
+                    <TextInput
+                        placeholder="Enter Assembly Code"
+                        value={assemblyCode}
+                        onChangeText={setAssemblyCode}
+                        style={styles.textInput}
+                        multiline
+                    />
+                    {Platform.OS === 'web' && (
+                        <TouchableOpacity onPress={() => handleUpload(setAssemblyCode)} style={styles.button}>
+                            <Text style={styles.buttonText}>Upload Assembly Code</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+
+                {/* Optab input and button */}
+                <View style={styles.inputGroup}>
+                    <TextInput
+                        placeholder="Enter Opcode Table (Optab)"
+                        value={optab}
+                        onChangeText={setOptab}
+                        style={styles.textInput}
+                        multiline
+                    />
+                    {Platform.OS === 'web' && (
+                        <TouchableOpacity onPress={() => handleUpload(setOptab)} style={styles.button}>
+                            <Text style={styles.buttonText}>Upload Optab</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+            </View>
+
+            {/* Run Pass 2 Button */}
+            <TouchableOpacity onPress={handlePass2} style={styles.button}>
+                <Text style={styles.buttonText}>Run Pass 2</Text>
+            </TouchableOpacity>
+
+            {/* Final Output */}
+            <Text style={styles.tableHeader}>Final Output</Text>
+            <FlatList
+                data={finalOutput}
+                renderItem={renderTableRow}
+                keyExtractor={(item) => item.id}
+                style={styles.table}
+                contentContainerStyle={styles.listContent} // Ensure list takes the full width and background color
+            />
+
+            {/* Record File */}
+            <Text style={styles.tableHeader}>Record File</Text>
+            <FlatList
+                data={recordFile}
+                renderItem={({ item }) => <Text style={styles.recordFileRow}>{item.content}</Text>}
+                keyExtractor={(item) => item.id}
+                style={styles.table}
+                contentContainerStyle={styles.listContent} // Ensure list takes the full width and background color
+            />
+        </View>
     );
 }
 
@@ -162,47 +133,35 @@ const colors = {
 
 const styles = StyleSheet.create({
     container: {
+        flex: 1, // Take the full height of the screen
         padding: 20,
         backgroundColor: colors.midnightBlue,
+        
+    },
+    inputContainer: {
+        marginBottom: 20,
+        
+    },
+    row: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+    column: {
+        flexDirection: 'column',
+    },
+    inputGroup: {
+        flex: 1,
+        marginHorizontal: 10,
     },
     textInput: {
         borderColor: colors.paleSilver,
         borderWidth: 1,
         padding: 10,
-        marginBottom: 20,
-        height: 150,
-        backgroundColor: colors.amethyst,
-        color: colors.mintCream,
-    },
-    table: {
-        marginVertical: 20,
-        // Removed borderWidth and borderColor for invisibility
-    },
-    tableHeader: {
-        color: colors.mintCream,
-        fontWeight: 'bold',
-        fontSize: 16,
         marginBottom: 10,
-    },
-    tableRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        padding: 5,
-        // Removed borderBottomWidth and borderBottomColor for invisibility
-    },
-    tableCell: {
-        color: colors.mintCream,
-        flex: 1,
-        textAlign: 'center',
-    },
-    outputInput: {
-        borderColor: colors.paleSilver,
-        borderWidth: 1,
-        padding: 10,
-        marginTop: 20,
-        height: 150,
+        height: 200,
         backgroundColor: colors.amethyst,
         color: colors.mintCream,
+        borderRadius: 10,
     },
     button: {
         backgroundColor: colors.tealGreen,
@@ -221,11 +180,29 @@ const styles = StyleSheet.create({
         color: colors.mintCream,
         fontWeight: 'bold',
     },
-    recordFile: {
-        marginVertical: 10,
+    table: {
+        marginVertical: 20,
+        backgroundColor: colors.midnightBlue, // Ensure background matches the overall UI
+    },
+    listContent: {
+        flexGrow: 1,
+        backgroundColor: colors.midnightBlue, // Background for the content of the list
+    },
+    tableHeader: {
+        color: colors.mintCream,
+        fontWeight: 'bold',
+        fontSize: 16,
+        marginBottom: 10,
+    },
+    tableRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
         padding: 5,
-        // Removed borderWidth and borderColor for invisibility
-        backgroundColor: colors.amethyst,
+    },
+    tableCell: {
+        color: colors.mintCream,
+        flex: 1,
+        textAlign: 'center',
     },
     recordFileRow: {
         color: colors.mintCream,
