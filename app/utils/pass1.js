@@ -1,10 +1,10 @@
 export const runPass1 = (assemblyCode, optab) => {
     const intermediateFile = [];
     const symtab = [];
-  
+
     const lines = assemblyCode.split('\n');
     const optabLines = optab.split('\n');
-  
+
     // Process Optab
     const optabMap = {};
     optabLines.forEach(line => {
@@ -13,27 +13,27 @@ export const runPass1 = (assemblyCode, optab) => {
             optabMap[mnemonic] = opcode;
         }
     });
-  
+
     let locctr = 0x1000; // Starting location counter
-  
+
     lines.forEach(line => {
-        // Split the line into label, opcode, and operand, but handle cases where label may not be present
+        // Split line into label, opcode, and operand
         const parts = line.trim().split(/\s+/);
         let label = '-', opcode, operand;
-  
+
         if (parts.length === 3) {
             [label, opcode, operand] = parts;
         } else if (parts.length === 2) {
             [opcode, operand] = parts;
         }
-  
+
         if (opcode === 'START') {
             locctr = parseInt(operand, 16);
             intermediateFile.push(`${locctr.toString(16)}\t${label}\t${opcode}\t${operand}\t-`);
         } else if (optabMap[opcode]) {
             intermediateFile.push(`${locctr.toString(16)}\t${label !== '-' ? label : '-'}\t${opcode}\t${operand}\t${optabMap[opcode]}`);
             
-            // Add the label to symtab if it's present and not '-'
+            // Add the label to symtab if present
             if (label !== '-') {
                 symtab.push(`${label}\t${locctr.toString(16)}`);
             }
@@ -68,10 +68,9 @@ export const runPass1 = (assemblyCode, optab) => {
             intermediateFile.push(`${locctr.toString(16)}\t-\t${opcode}\t${operand}\t-`);
         }
     });
-  
+
     return {
         intermediateFile,
         symtab
     };
-  };
-  
+};

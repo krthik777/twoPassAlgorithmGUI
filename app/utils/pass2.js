@@ -1,116 +1,116 @@
-// Assuming runPass2 is defined in ../utils/pass2.js
+export function runAssembler(assemblyCode, optab) {
+    const intermediateFile = [];
+    const symtab = new Map();
+    const finalOutput = [];
+    const recordFile = [];
+    const optabMap = {};
 
-export function runPass2(assemblyCode, optab) {
-  const lines = assemblyCode.split('\n').map(line => line.trim()).filter(Boolean);
-  const optabMap = {};
+    const lines = assemblyCode.split('\n').map(line => line.trim()).filter(Boolean);
+    const optabLines = optab.split('\n');
 
-  // Create a map for optab
-  optab.split('\n').forEach(line => {
-      const [mnemonic, code] = line.trim().split(/\s+/);
-      optabMap[mnemonic] = code;
-  });
+    // Build optab map for opcode to hex code mappings
+    optabLines.forEach(line => {
+        const [mnemonic, code] = line.trim().split(/\s+/);
+        optabMap[mnemonic] = code;
+    });
 
-  let startingAddress = 0;
-  const finalOutput = [];
-  const recordFile = []; // Initialize the record file array
-  let currentAddress = 0;
+    let locctr = 0x1000; // Starting location counter for Pass 1
+    let startingAddress = locctr;
+    let currentAddress = locctr;
 
-  // Store the program name for the header record
-  const programName = lines[0].split(/\s+/)[0]; // Get program name from the first line
+    // Pass 1: Build the intermediate file and symbol table
+    lines.forEach(line => {
+        const parts = line.split(/\s+/);
+        const [label, opcode, operand] = parts.length === 3 ? parts : ['-', parts[0], parts[1]];
 
-  // Process the assembly code
-  lines.forEach(line => {
-      const parts = line.split(/\s+/);
-      const [label, opcode, operand] = parts.length === 3 ? parts : ['-', parts[0], parts[1]]; // Adjust for labels
+        if (opcode === 'START') {
+            locctr = parseInt(operand, 16);
+            startingAddress = locctr;
+            intermediateFile.push(`${locctr.toString(16)}\t${label}\t${opcode}\t${operand}\t-`);
+        } else if (optabMap[opcode]) {
+            if (label !== '-') symtab.set(label, locctr.toString(16));
+            intermediateFile.push(`${locctr.toString(16)}\t${label}\t${opcode}\t${operand}\t${optabMap[opcode]}`);
+            locctr += 3; // Instruction length is assumed to be 3 bytes
+        } else if (opcode === 'WORD') {
+            if (label !== '-') symtab.set(label, locctr.toString(16));
+            intermediateFile.push(`${locctr.toString(16)}\t${label}\t${opcode}\t${operand}\t${parseInt(operand).toString(16).padStart(6, '0')}`);
+            locctr += 3;
+        } else if (opcode === 'BYTE') {
+            const byteValue = operand.match(/C'(.*)'/)[1].split('').map(c => c.charCodeAt(0).toString(16)).join('');
+            if (label !== '-') symtab.set(label, locctr.toString(16));
+            intermediateFile.push(`${locctr.toString(16)}\t${label}\t${opcode}\t${operand}\t${byteValue}`);
+            locctr += byteValue.length / 2;
+        } else if (opcode === 'RESB' || opcode === 'RESW') {
+            if (label !== '-') symtab.set(label, locctr.toString(16));
+            intermediateFile.push(`${locctr.toString(16)}\t${label}\t${opcode}\t${operand}\t-`);
+            locctr += opcode === 'RESB' ? parseInt(operand, 10) : parseInt(operand, 10) * 3;
+        } else if (opcode === 'END') {
+            intermediateFile.push(`${locctr.toString(16)}\t-\t${opcode}\t${operand}\t-`);
+        }
+    });
 
-      if (opcode === 'START') {
-          startingAddress = parseInt(operand, 16);
-          currentAddress = startingAddress;
-          finalOutput.push(['-', label, opcode, operand, '-']);
-      } else if (opcode === 'END') {
-          finalOutput.push([currentAddress.toString(16).toUpperCase().padStart(4, '0'), '-', label, opcode, operand]);
-          // End Record (E) should reference the starting address
-          recordFile.push(`E^${startingAddress.toString(16).toUpperCase().padStart(6, '0')}`);
-      } else {
-          const opcodeHex = optabMap[opcode];
-          let instructionLength = getInstructionLength(opcode, operand);
-          let objectCode;
+    // Header Record
+    const programName = lines[0].split(/\s+/)[0].padEnd(6, ' ');
+    const programLength = (locctr - startingAddress).toString(16).padStart(6, '0');
+    recordFile.push(`H^${programName}^${startingAddress.toString(16).toUpperCase().padStart(6, '0')}^${programLength}`);
 
-          if (opcodeHex) {
-              objectCode = opcodeHex + currentAddress.toString(16).toUpperCase().padStart(6, '0').slice(2); // Use last 4 digits
-              finalOutput.push([
-                  currentAddress.toString(16).toUpperCase().padStart(4, '0'), // Address
-                  '-', // Placeholder for a field that might be used later
-                  opcode, // Opcode
-                  operand, // Operand
-                  objectCode // Object Code
-              ]);
-          } else {
-              objectCode = '-';
-              finalOutput.push([
-                  currentAddress.toString(16).toUpperCase().padStart(4, '0'),
-                  label,
-                  opcode,
-                  operand,
-                  objectCode // Use '-' for non-opcode lines
-              ]);
-          }
+    // Pass 2: Generate the final output and record file
+    let currentTextRecord = '';
+    let textRecordAddress = '';
+    let textRecordLength = 0;
 
-          // Create or update Text Record (T)
-          if (opcodeHex) {
-              let textRecord = `T^${currentAddress.toString(16).toUpperCase().padStart(6, '0')}^`;
-              const objectCodes = [objectCode];
+    intermediateFile.forEach(line => {
+        const [address, label, opcode, operand, objCode] = line.split('\t');
+        let objectCode = objCode;
 
-              // Increment the address based on instruction length
-              currentAddress += instructionLength;
+        if (opcode === 'START') {
+            finalOutput.push(['-', label, opcode, operand, '-']);
+        } else if (opcode === 'END') {
+            if (currentTextRecord) {
+                recordFile.push(`T^${textRecordAddress.toUpperCase()}^${textRecordLength.toString(16).padStart(2, '0').toUpperCase()}${currentTextRecord}`);
+            }
+            finalOutput.push([address, '-', label, opcode, operand]);
+            recordFile.push(`E^${symtab.get(operand) || startingAddress.toString(16).toUpperCase().padStart(6, '0')}`);
+        } else {
+            if (optabMap[opcode]) {
+                if (symtab.has(operand)) {
+                    objectCode += symtab.get(operand).padStart(4, '0');
+                } else {
+                    objectCode += "0000"; // default to 0000 if symbol not found
+                }
+                finalOutput.push([address, label, opcode, operand, objectCode]);
+            } else if (opcode === 'WORD') {
+                objectCode = parseInt(operand).toString(16).padStart(6, '0');
+                finalOutput.push([address, label, opcode, operand, objectCode]);
+            } else if (opcode === 'BYTE') {
+                const byteValue = operand.match(/C'(.*)'/)[1].split('').map(c => c.charCodeAt(0).toString(16)).join('');
+                finalOutput.push([address, label, opcode, operand, byteValue]);
+            } else if (opcode === 'RESW' || opcode === 'RESB') {
+                finalOutput.push([address, label, opcode, operand, '-']);
+            }
 
-              // Handle case for subsequent instructions
-              while (instructionLength > 0) {
-                  const nextLine = lines.find(line => line.includes(currentAddress.toString(16).toUpperCase()));
-                  if (nextLine) {
-                      const nextParts = nextLine.split(/\s+/);
-                      const nextOpcode = nextParts[1];
-                      const nextOperand = nextParts[2];
-                      const nextOpcodeHex = optabMap[nextOpcode];
-                      if (nextOpcodeHex) {
-                          const nextObjectCode = nextOpcodeHex + currentAddress.toString(16).toUpperCase().padStart(6, '0').slice(2);
-                          objectCodes.push(nextObjectCode);
-                          currentAddress += getInstructionLength(nextOpcode, nextOperand);
-                          instructionLength--;
-                      }
-                  } else {
-                      break; // No more instructions to process
-                  }
-              }
+            // Handle Text Record
+            if (objectCode !== '-' && objectCode) {
+                if (!currentTextRecord) {
+                    textRecordAddress = address;
+                }
+                if (textRecordLength + objectCode.length / 2 > 30) {
+                    recordFile.push(`T^${textRecordAddress.toUpperCase()}^${textRecordLength.toString(16).padStart(2, '0').toUpperCase()}${currentTextRecord}`);
+                    currentTextRecord = objectCode;
+                    textRecordAddress = address;
+                    textRecordLength = objectCode.length / 2;
+                } else {
+                    currentTextRecord += `^${objectCode}`;
+                    textRecordLength += objectCode.length / 2;
+                }
+            }
+        }
+    });
 
-              textRecord += objectCodes.join('^');
-              recordFile.push(textRecord);
-          }
-
-          // Increment the address based on instruction length
-          currentAddress += instructionLength;
-      }
-
-      // Handling directive lines
-      if (label && !finalOutput.some(row => row[1] === label)) { // Avoid duplicates
-          finalOutput.push([currentAddress.toString(16).toUpperCase().padStart(4, '0'), label, '-', '-', '-']);
-      }
-  });
-
-  // Create the Header Record (H)
-  const length = (currentAddress - startingAddress).toString(16).toUpperCase().padStart(6, '0'); // Calculate the length of the program
-  recordFile.unshift(`H^${programName}^${startingAddress.toString(16).toUpperCase().padStart(6, '0')}^${length}`);
-
-  return { finalOutput, recordFile }; // Return both finalOutput and recordFile
-}
-
-// Helper function to get instruction length
-function getInstructionLength(opcode, operand) {
-  if (opcode === 'RESB') return parseInt(operand); // Reserve bytes
-  if (opcode === 'RESW') return parseInt(operand) * 3; // Reserve words (3 bytes each)
-  if (opcode === 'BYTE') {
-      // Assuming the operand format is C'...' for character literals
-      return operand.startsWith("C'") ? (operand.length - 3) : 1; // 1 for BYTE of 1 byte value
-  }
-  return 3; // Default instruction length for others
+    return {
+        intermediateFile,
+        symtab: Array.from(symtab.entries()).map(([symbol, addr]) => `${symbol}\t${addr}`),
+        finalOutput,
+        recordFile
+    };
 }
